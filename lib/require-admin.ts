@@ -49,11 +49,22 @@ export const ensureAdminApi = async (
   | { session: NonNullable<Awaited<ReturnType<typeof auth.api.getSession>>> }
   | NextResponse
 > => {
-  const session = await auth.api.getSession({ headers: req.headers });
-  if (!session)
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!isAdminSession(session))
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  type SessionT = NonNullable<Awaited<ReturnType<typeof auth.api.getSession>>>;
-  return { session: session as SessionT };
+  try {
+    const session = await auth.api.getSession({ headers: req.headers });
+    if (!session)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!isAdminSession(session))
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    type SessionT = NonNullable<
+      Awaited<ReturnType<typeof auth.api.getSession>>
+    >;
+    return { session: session as SessionT };
+  } catch (e) {
+    // If Better Auth fails due to DB/network issues, surface 503 to clients
+    const msg = e instanceof Error ? e.message : "Service unavailable";
+    return NextResponse.json(
+      { error: `Auth unavailable: ${msg}` },
+      { status: 503 },
+    );
+  }
 };

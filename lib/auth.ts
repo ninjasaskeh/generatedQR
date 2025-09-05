@@ -6,6 +6,7 @@ import { schema } from "@/db/schema";
 import { admin } from "better-auth/plugins";
 
 export const auth = betterAuth({
+  baseURL: process.env.BETTER_AUTH_URL!,
   emailAndPassword: {
     enabled: true,
   },
