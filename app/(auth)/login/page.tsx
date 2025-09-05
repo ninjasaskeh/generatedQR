@@ -1,0 +1,21 @@
+import { LoginForm } from "@/components/login-form";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Masuk | Absensi QR Code",
+  description: "Masuk untuk mengelola peserta dan absensi QR.",
+  robots: { index: false, follow: false },
+  alternates: { canonical: "/login" },
+};
+
+const LoginPage = () => {
+  return (
+    <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
+      <div className="w-full max-w-sm">
+        <LoginForm />
+      </div>
+    </div>
+  );
+};
+
+export default LoginPage;
