@@ -11,9 +11,8 @@ import {
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { IconCamera, IconQrcode, IconChevronRight } from "@tabler/icons-react";
-import SignUp from "@/components/signUp";
 
-const Home = async () => {
+const RootHome = async () => {
   const session = await auth.api.getSession({ headers: await headers() });
   const isLoggedIn = !!session?.user;
 
@@ -59,7 +58,6 @@ const Home = async () => {
               </Link>
             </>
           )}
-          <SignUp />
         </div>
       </section>
 
@@ -127,4 +125,5 @@ const Home = async () => {
     </div>
   );
 };
-export default Home;
+
+export default RootHome;
