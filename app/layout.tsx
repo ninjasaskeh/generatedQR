@@ -50,31 +50,37 @@ export const metadata: Metadata = {
     siteName,
     title: siteName,
     description: siteDescription,
-    images: [{ url: "/vercel.svg" }],
+    images: [
+      {
+        url: "/BRCODE%20DEPAN.jpg",
+      },
+    ],
     locale: "id_ID",
   },
   twitter: {
     card: "summary_large_image",
     title: siteName,
     description: siteDescription,
-    images: ["/vercel.svg"],
+    images: ["/BRCODE%20DEPAN.jpg"],
   },
   robots: {
     index: true,
     follow: true,
   },
   icons: {
-    icon: [
-      { url: "/favicon.ico", type: "image/x-icon" },
-      { url: "/icon.svg", type: "image/svg+xml" },
-    ],
+    icon: [{ url: "/favicon.ico", type: "image/x-icon" }],
   },
+  manifest: "/site.webmanifest",
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+  ],
 };
 
 export default function RootLayout({
