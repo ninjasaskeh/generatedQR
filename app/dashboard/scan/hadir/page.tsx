@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function ScanHadirPage() {
   const [busy, setBusy] = useState(false);
   const [tokenValue, setTokenValue] = useState("");
-  const [scannerKb, setScannerKb] = useState(false);
+  const [scannerKb, setScannerKb] = useState(true);
   const manualInputRef = useRef<HTMLInputElement | null>(null);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [recent, setRecent] = useState<
@@ -138,7 +138,7 @@ export default function ScanHadirPage() {
                 onCheckedChange={(v) => setScannerKb(Boolean(v))}
               />
               <Label htmlFor="scannerKb" className="cursor-pointer">
-                Mode Scanner Keyboard: Auto-submit
+                Mode Scanner
               </Label>
               <Button
                 type="button"
@@ -168,7 +168,7 @@ export default function ScanHadirPage() {
                 <tr>
                   <th className="text-left p-2">No</th>
                   <th className="text-left p-2">Token</th>
-                  <th className="text-left p-2">Souvenir</th>
+                  <th className="text-left p-2">Kehadiran</th>
                 </tr>
               </thead>
               <tbody>
@@ -210,12 +210,12 @@ export default function ScanHadirPage() {
                           variant="outline"
                           className="text-muted-foreground px-1.5"
                         >
-                          {r.souvenir ? (
+                          {r.hadir ? (
                             <IconCircleCheckFilled className="mr-1 size-4 fill-green-500 dark:fill-green-400" />
                           ) : (
                             <IconLoader className="mr-1 size-4" />
                           )}
-                          {r.souvenir ? "Diambil" : "Belum"}
+                          {r.hadir ? "Hadir" : "Belum"}
                         </Badge>
                       </td>
                     </tr>

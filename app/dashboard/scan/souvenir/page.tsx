@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function ScanSouvenirPage() {
   const [busy, setBusy] = useState(false);
   const [tokenValue, setTokenValue] = useState("");
-  const [scannerKb, setScannerKb] = useState(false);
+  const [scannerKb, setScannerKb] = useState(true);
   const manualInputRef = useRef<HTMLInputElement | null>(null);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [recent, setRecent] = useState<
@@ -147,7 +147,7 @@ export default function ScanSouvenirPage() {
               </Label>
               <Button
                 type="button"
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 onClick={() => manualInputRef.current?.focus()}
               >
