@@ -100,9 +100,8 @@ export function QRCodesTable({
     const pRaw = Number(searchParams.get("page") || "1");
     const p = Number.isFinite(pRaw) && pRaw > 0 ? Math.floor(pRaw) : 1;
     const lRaw = Number(searchParams.get("limit") || String(pageSize));
-    const l = (allowedPageSizes as readonly number[]).includes(lRaw as any)
-      ? lRaw
-      : pageSize;
+    const allowedList = allowedPageSizes as readonly number[];
+    const l = allowedList.includes(lRaw) ? lRaw : pageSize;
     if (p !== page) setPage(p);
     if (l !== pageSize) setPageSize(l);
     // eslint-disable-next-line react-hooks/exhaustive-deps
