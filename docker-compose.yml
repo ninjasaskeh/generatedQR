@@ -1,0 +1,42 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    image: gathering-app:latest
+    container_name: gathering-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"
+    # If you run behind a reverse proxy (Caddy/Nginx/Traefik), you can remove the ports mapping
+    # and attach to the same user-defined network.
+    # networks:
+    #   - web
+    depends_on:
+      # Uncomment if you enable the Postgres service below and point DATABASE_URL to it
+      # - db
+      []
+
+  # Optional: self-hosted Postgres instead of Neon
+  # db:
+  #   image: postgres:16-alpine
+  #   container_name: gathering-db
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_USER: app
+  #     POSTGRES_PASSWORD: app
+  #     POSTGRES_DB: app
+  #   volumes:
+  #     - db_data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432" # expose only if you need external access
+
+# networks:
+#   web:
+#     external: true
+
+# volumes:
+#   db_data:
+

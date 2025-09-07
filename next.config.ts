@@ -9,6 +9,8 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Produce a minimal standalone server for Docker runtime
+  output: "standalone",
 };
 
 export default nextConfig;

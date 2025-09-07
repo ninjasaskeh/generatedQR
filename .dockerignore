@@ -1,0 +1,22 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Builds and caches
+.next
+out
+build
+coverage
+
+# VCS
+.git
+.gitignore
+.idea
+
+# Env files (do not bake secrets into images)
+.env
+.env.*
+
+# OS junk
+.DS_Store
+
