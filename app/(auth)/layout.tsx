@@ -2,12 +2,11 @@ import type { Metadata } from "next";
 import Image from "next/image";
 
 export const metadata: Metadata = {
-  title: "Absensi QR Code | Kelola Absensi Peserta dengan QR",
-  description:
-    "Kelola absensi gathering dengan QR Code: tambah peserta, generate QR, dan tandai hadir via pemindaian kamera.",
+  title: "Masuk | Absensi QR Code",
+  description: "Login untuk mengelola absensi QR Code.",
 };
 
-const RootSegmentLayout = ({ children }: { children: React.ReactNode }) => {
+const AuthSegmentLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <>
       {children}
@@ -17,8 +16,8 @@ const RootSegmentLayout = ({ children }: { children: React.ReactNode }) => {
           <Image
             src="/logo-dolly.png"
             alt="Dolly Logo"
-            width={500}
-            height={500}
+            width={100}
+            height={100}
             className="h-5 w-auto"
             priority
           />
@@ -28,4 +27,4 @@ const RootSegmentLayout = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-export default RootSegmentLayout;
+export default AuthSegmentLayout;

@@ -41,14 +41,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Pencil, Trash2, Plus, MoreHorizontal } from "lucide-react";
+import { Pencil, Trash2, Plus } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export type UserRow = {
   id: string;
@@ -167,44 +168,28 @@ export function UsersTable() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-end gap-2">
-        <div className="flex items-center gap-2">
-          <select
-            className="h-8 rounded-md border px-2 text-sm"
-            value={limit}
-            onChange={(e) => {
-              setLimit(Number(e.target.value));
-              setPage(1);
-            }}
-          >
-            {[10, 20, 30, 40, 50].map((ps) => (
-              <option key={ps} value={ps}>
-                {ps} / halaman
-              </option>
-            ))}
-          </select>
-          <Dialog open={addOpen} onOpenChange={setAddOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" className="gap-2">
-                <Plus className="size-4" /> Tambah
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Tambah User</DialogTitle>
-                <DialogDescription>
-                  Isi detail pengguna untuk menambahkan akun baru.
-                </DialogDescription>
-              </DialogHeader>
-              <CreateUserForm
-                onSuccessAction={() => {
-                  setAddOpen(false);
-                  setPage(1);
-                  fetchRows();
-                }}
-              />
-            </DialogContent>
-          </Dialog>
-        </div>
+        <Dialog open={addOpen} onOpenChange={setAddOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm" className="gap-2">
+              <Plus className="size-4" /> Tambah
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Tambah User</DialogTitle>
+              <DialogDescription>
+                Isi detail pengguna untuk menambahkan akun baru.
+              </DialogDescription>
+            </DialogHeader>
+            <CreateUserForm
+              onSuccessAction={() => {
+                setAddOpen(false);
+                setPage(1);
+                fetchRows();
+              }}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="rounded-md border p-2 sm:p-3 overflow-x-auto">
@@ -251,44 +236,43 @@ export function UsersTable() {
                   <TableCell className="min-w-[180px]">{u.name}</TableCell>
                   <TableCell className="min-w-[240px]">{u.email}</TableCell>
                   <TableCell className="text-right whitespace-nowrap">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button size="icon" variant="ghost" aria-label="Aksi">
-                          <MoreHorizontal className="size-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setSelected(u);
-                            setEditOpen(true);
-                          }}
-                        >
-                          <span className="flex items-center gap-2">
-                            <Pencil className="size-4" />
-                            Edit User
-                          </span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          disabled={!!currentUserId && u.id === currentUserId}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            if (currentUserId && u.id === currentUserId) {
-                              toast.error("Tidak bisa menghapus akun sendiri");
-                              return;
-                            }
-                            setSelected(u);
-                            setDeleteOpen(true);
-                          }}
-                        >
-                          <span className="flex items-center gap-2">
-                            <Trash2 className="size-4" />
-                            Hapus
-                          </span>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="flex items-center justify-end gap-1.5">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        aria-label="Edit user"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setSelected(u);
+                          setEditOpen(true);
+                        }}
+                        title="Edit"
+                      >
+                        <Pencil className="size-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        aria-label="Hapus user"
+                        title={
+                          currentUserId && u.id === currentUserId
+                            ? "Tidak bisa hapus akun sendiri"
+                            : "Hapus"
+                        }
+                        disabled={!!currentUserId && u.id === currentUserId}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (currentUserId && u.id === currentUserId) {
+                            toast.error("Tidak bisa menghapus akun sendiri");
+                            return;
+                          }
+                          setSelected(u);
+                          setDeleteOpen(true);
+                        }}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
@@ -373,50 +357,72 @@ export function UsersTable() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <Pagination className="justify-end">
-        <PaginationContent>
-          <PaginationItem>
-            <PaginationPrevious
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                if (page > 1) setPage(page - 1);
-              }}
-              className={page <= 1 ? "pointer-events-none opacity-50" : ""}
-            />
-          </PaginationItem>
-          {pageNumbers.map((p, i) => (
-            <PaginationItem key={`${p}-${i}`}>
-              {p === "ellipsis" ? (
-                <PaginationEllipsis />
-              ) : (
-                <PaginationLink
-                  href="#"
-                  isActive={p === page}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    if (p !== page) setPage(p);
-                  }}
-                >
-                  {p}
-                </PaginationLink>
-              )}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2">
+          <Select
+            value={String(limit)}
+            onValueChange={(v) => {
+              setLimit(Number(v));
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="w-[140px] h-8">
+              <SelectValue placeholder="/ halaman" />
+            </SelectTrigger>
+            <SelectContent align="start">
+              {[10, 20, 30, 40, 50].map((ps) => (
+                <SelectItem key={ps} value={String(ps)}>
+                  {ps} / halaman
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (page > 1) setPage(page - 1);
+                }}
+                className={page <= 1 ? "pointer-events-none opacity-50" : ""}
+              />
             </PaginationItem>
-          ))}
-          <PaginationItem>
-            <PaginationNext
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                if (page < pageCount) setPage(page + 1);
-              }}
-              className={
-                page >= pageCount ? "pointer-events-none opacity-50" : ""
-              }
-            />
-          </PaginationItem>
-        </PaginationContent>
-      </Pagination>
+            {pageNumbers.map((p, i) => (
+              <PaginationItem key={`${p}-${i}`}>
+                {p === "ellipsis" ? (
+                  <PaginationEllipsis />
+                ) : (
+                  <PaginationLink
+                    href="#"
+                    isActive={p === page}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (p !== page) setPage(p);
+                    }}
+                  >
+                    {p}
+                  </PaginationLink>
+                )}
+              </PaginationItem>
+            ))}
+            <PaginationItem>
+              <PaginationNext
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (page < pageCount) setPage(page + 1);
+                }}
+                className={
+                  page >= pageCount ? "pointer-events-none opacity-50" : ""
+                }
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      </div>
     </div>
   );
 }

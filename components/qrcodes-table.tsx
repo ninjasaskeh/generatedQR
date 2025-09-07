@@ -36,6 +36,13 @@ import { toast } from "sonner";
 import { IconCircleCheckFilled, IconLoader } from "@tabler/icons-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Pagination,
   PaginationContent,
   PaginationEllipsis,
@@ -44,7 +51,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { usePathname, useSearchParams, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 export type QRRow = {
   id: string;
@@ -53,10 +60,22 @@ export type QRRow = {
   souvenir: boolean;
 };
 
-export function QRCodesTable({ data }: { data: QRRow[] }) {
+export function QRCodesTable({
+  data,
+  initialPageSize = 10,
+  refreshKey,
+  showActions = true,
+  filterType,
+}: {
+  data: QRRow[];
+  initialPageSize?: number;
+  refreshKey?: number | string;
+  showActions?: boolean;
+  filterType?: "hadir" | "souvenir";
+}) {
   // removed input/debouncedQuery state
   const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [pageSize, setPageSize] = React.useState<number>(10);
+  const [pageSize, setPageSize] = React.useState<number>(initialPageSize);
   const [page, setPage] = React.useState<number>(1);
   const [rows, setRows] = React.useState<QRRow[] | null>(null);
   const [loading, setLoading] = React.useState(false);
@@ -65,6 +84,11 @@ export function QRCodesTable({ data }: { data: QRRow[] }) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
+
+  const allowedPageSizes = React.useMemo(
+    () => [5, 10, 20, 30, 40, 50] as const,
+    [],
+  );
 
   // reset to first page when pageSize changes
   React.useEffect(() => {
@@ -76,8 +100,9 @@ export function QRCodesTable({ data }: { data: QRRow[] }) {
     const pRaw = Number(searchParams.get("page") || "1");
     const p = Number.isFinite(pRaw) && pRaw > 0 ? Math.floor(pRaw) : 1;
     const lRaw = Number(searchParams.get("limit") || String(pageSize));
-    const allowed = [10, 20, 30, 40, 50] as const;
-    const l = (allowed as readonly number[]).includes(lRaw) ? lRaw : 10;
+    const l = (allowedPageSizes as readonly number[]).includes(lRaw as any)
+      ? lRaw
+      : pageSize;
     if (p !== page) setPage(p);
     if (l !== pageSize) setPageSize(l);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -100,6 +125,7 @@ export function QRCodesTable({ data }: { data: QRRow[] }) {
     const params = new URLSearchParams();
     params.set("limit", String(pageSize));
     params.set("page", String(page));
+    if (filterType) params.set("type", filterType);
     setLoading(true);
     fetch(`/api/qrcodes?${params.toString()}`, { signal: controller.signal })
       .then(async (res) => {
@@ -124,31 +150,12 @@ export function QRCodesTable({ data }: { data: QRRow[] }) {
         setLoading(false);
       });
     return () => controller.abort();
-  }, [pageSize, page]);
-
-  // Helper: compute page numbers with ellipses
-  const pageNumbers = React.useMemo(() => {
-    const maxButtons = 5;
-    const pages: (number | "ellipsis")[] = [];
-    if (pageCount <= maxButtons) {
-      for (let i = 1; i <= pageCount; i++) pages.push(i);
-      return pages;
-    }
-    const left = Math.max(1, page - 1);
-    const right = Math.min(pageCount, page + 1);
-    pages.push(1);
-    if (left > 2) pages.push("ellipsis");
-    for (let i = left; i <= right; i++)
-      if (i !== 1 && i !== pageCount) pages.push(i);
-    if (right < pageCount - 1) pages.push("ellipsis");
-    if (pageCount > 1) pages.push(pageCount);
-    return pages;
-  }, [page, pageCount]);
+  }, [pageSize, page, refreshKey, filterType]);
 
   const displayed = rows ?? data;
 
-  const columns = React.useMemo<ColumnDef<QRRow>[]>(
-    () => [
+  const columns = React.useMemo<ColumnDef<QRRow>[]>(() => {
+    const cols: ColumnDef<QRRow>[] = [
       {
         header: "No",
         cell: ({ row }) => (page - 1) * pageSize + row.index + 1,
@@ -191,7 +198,10 @@ export function QRCodesTable({ data }: { data: QRRow[] }) {
           </Badge>
         ),
       },
-      {
+    ];
+
+    if (showActions) {
+      cols.push({
         id: "actions",
         header: () => <div className="text-right">Aksi</div>,
         cell: ({ row }) => {
@@ -254,10 +264,11 @@ export function QRCodesTable({ data }: { data: QRRow[] }) {
             </div>
           );
         },
-      },
-    ],
-    [page, pageSize],
-  );
+      });
+    }
+
+    return cols;
+  }, [page, pageSize, showActions]);
 
   const table = useReactTable({
     data: displayed,
@@ -268,27 +279,28 @@ export function QRCodesTable({ data }: { data: QRRow[] }) {
     getSortedRowModel: getSortedRowModel(),
   });
 
+  // Helper: compute page numbers with ellipses
+  const pageNumbers = React.useMemo(() => {
+    const maxButtons = 5;
+    const pages: (number | "ellipsis")[] = [];
+    if (pageCount <= maxButtons) {
+      for (let i = 1; i <= pageCount; i++) pages.push(i);
+      return pages;
+    }
+    const left = Math.max(1, page - 1);
+    const right = Math.min(pageCount, page + 1);
+    pages.push(1);
+    if (left > 2) pages.push("ellipsis");
+    for (let i = left; i <= right; i++)
+      if (i !== 1 && i !== pageCount) pages.push(i);
+    if (right < pageCount - 1) pages.push("ellipsis");
+    if (pageCount > 1) pages.push(pageCount);
+    return pages;
+  }, [page, pageCount]);
+
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-end gap-2">
-        <div className="flex items-center gap-2">
-          <select
-            className="h-8 rounded-md border px-2 text-sm"
-            value={pageSize}
-            onChange={(e) => {
-              const next = Number(e.target.value);
-              setPageSize(next);
-              setPage(1);
-            }}
-          >
-            {[10, 20, 30, 40, 50].map((ps) => (
-              <option key={ps} value={ps}>
-                {ps} / halaman
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
+      {/* table */}
       <div className="rounded-md border p-2 sm:p-3 overflow-x-auto">
         <Table>
           <TableHeader>
@@ -327,9 +339,11 @@ export function QRCodesTable({ data }: { data: QRRow[] }) {
                   <TableCell>
                     <Skeleton className="h-6 w-28" />
                   </TableCell>
-                  <TableCell className="text-right">
-                    <Skeleton className="h-8 w-28 ml-auto" />
-                  </TableCell>
+                  {showActions ? (
+                    <TableCell className="text-right">
+                      <Skeleton className="h-8 w-28 ml-auto" />
+                    </TableCell>
+                  ) : null}
                 </TableRow>
               ))
             ) : table.getRowModel().rows.length ? (
@@ -361,52 +375,76 @@ export function QRCodesTable({ data }: { data: QRRow[] }) {
           </TableBody>
         </Table>
       </div>
-      <Pagination className="justify-end">
-        <PaginationContent>
-          <PaginationItem>
-            <PaginationPrevious
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                if (page > 1) setPage(page - 1);
-              }}
-              aria-disabled={page <= 1}
-              className={page <= 1 ? "pointer-events-none opacity-50" : ""}
-            />
-          </PaginationItem>
-          {pageNumbers.map((p, idx) => (
-            <PaginationItem key={`${p}-${idx}`}>
-              {p === "ellipsis" ? (
-                <PaginationEllipsis />
-              ) : (
-                <PaginationLink
-                  href="#"
-                  isActive={p === page}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    if (p !== page) setPage(p);
-                  }}
-                >
-                  {p}
-                </PaginationLink>
-              )}
+      {/* bottom controls: select + pagination */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2">
+          <Select
+            value={String(pageSize)}
+            onValueChange={(v) => {
+              const next = Number(v);
+              setPageSize(next);
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="w-[140px] h-8">
+              <SelectValue placeholder="/ halaman" />
+            </SelectTrigger>
+            <SelectContent align="start">
+              {allowedPageSizes.map((ps) => (
+                <SelectItem key={ps} value={String(ps)}>
+                  {ps} / halaman
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (page > 1) setPage(page - 1);
+                }}
+                aria-disabled={page <= 1}
+                className={page <= 1 ? "pointer-events-none opacity-50" : ""}
+              />
             </PaginationItem>
-          ))}
-          <PaginationItem>
-            <PaginationNext
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                if (page < pageCount) setPage(page + 1);
-              }}
-              aria-disabled={page >= pageCount}
-              className={
-                page >= pageCount ? "pointer-events-none opacity-50" : ""
-              }
-            />
-          </PaginationItem>
-        </PaginationContent>
-      </Pagination>
+            {pageNumbers.map((p, idx) => (
+              <PaginationItem key={`${p}-${idx}`}>
+                {p === "ellipsis" ? (
+                  <PaginationEllipsis />
+                ) : (
+                  <PaginationLink
+                    href="#"
+                    isActive={p === page}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (p !== page) setPage(p);
+                    }}
+                  >
+                    {p}
+                  </PaginationLink>
+                )}
+              </PaginationItem>
+            ))}
+            <PaginationItem>
+              <PaginationNext
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (page < pageCount) setPage(page + 1);
+                }}
+                aria-disabled={page >= pageCount}
+                className={
+                  page >= pageCount ? "pointer-events-none opacity-50" : ""
+                }
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      </div>
     </div>
   );
 }

@@ -12,6 +12,8 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { IconCamera, IconQrcode, IconChevronRight } from "@tabler/icons-react";
 
+export const dynamic = "force-dynamic";
+
 const RootHome = async () => {
   const session = await auth.api.getSession({ headers: await headers() });
   const isLoggedIn = !!session?.user;
@@ -83,7 +85,7 @@ const RootHome = async () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <IconQrcode className="size-5" />
-                Pindai QR & Tandai Hadir/Souvenir
+                Pindai QR
               </CardTitle>
               <CardDescription>
                 Pemindaian via kamera perangkat atau input token manual.

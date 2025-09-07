@@ -73,7 +73,10 @@ const QRCodesPage = async () => {
               Generate QR untuk mulai mencetak dan melakukan pemindaian.
             </p>
             <div className="pt-2">
-              <Link href="/dashboard/participants/add" className={buttonVariants()}>
+              <Link
+                href="/dashboard/participants/add"
+                className={buttonVariants()}
+              >
                 Generate QR
               </Link>
             </div>

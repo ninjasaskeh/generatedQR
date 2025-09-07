@@ -117,12 +117,6 @@ export function LoginForm({
                   </Button>
                 </div>
               </div>
-              <div className="mt-4 text-center text-sm">
-                Belum punya akun?{" "}
-                <Link href="#" className="underline underline-offset-4">
-                  Daftar
-                </Link>
-              </div>
             </form>
           </Form>
         </CardContent>

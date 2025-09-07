@@ -1,54 +1,80 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
-import { IconCircleCheckFilled, IconLoader } from "@tabler/icons-react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Skeleton } from "@/components/ui/skeleton";
+import { QRCodesTable } from "@/components/qrcodes-table";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { ArrowLeft, ScanBarcode } from "lucide-react";
 
 export default function ScanHadirPage() {
   const [busy, setBusy] = useState(false);
   const [tokenValue, setTokenValue] = useState("");
-  const [scannerKb, setScannerKb] = useState(true);
+  const [scannerKb] = useState(true);
   const manualInputRef = useRef<HTMLInputElement | null>(null);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [recent, setRecent] = useState<
-    {
-      id: string;
-      token: string;
-      hadir: boolean;
-      souvenir: boolean;
-      updatedAt: string | null;
-    }[]
-  >([]);
-  const [recentLoading, setRecentLoading] = useState(false);
+  const submittingRef = useRef(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [{ total, hadirCount, souvenirCount }, setCounts] = useState({
+    total: 0,
+    hadirCount: 0,
+    souvenirCount: 0,
+  });
 
-  const fetchRecent = async () => {
+  async function loadCounts() {
     try {
-      setRecentLoading(true);
-      const res = await fetch("/api/qrcodes/recent?type=hadir&limit=5", {
-        cache: "no-store",
+      const [allRes, hadirRes, souvenirRes] = await Promise.all([
+        fetch(`/api/qrcodes?limit=1&page=1`, { cache: "no-store" }),
+        fetch(`/api/qrcodes?type=hadir&limit=1&page=1`, { cache: "no-store" }),
+        fetch(`/api/qrcodes?type=souvenir&limit=1&page=1`, {
+          cache: "no-store",
+        }),
+      ]);
+      const [allJson, hadirJson, souvenirJson] = await Promise.all([
+        allRes.json(),
+        hadirRes.json(),
+        souvenirRes.json(),
+      ]);
+      setCounts({
+        total: Number(allJson?.total || 0),
+        hadirCount: Number(hadirJson?.total || 0),
+        souvenirCount: Number(souvenirJson?.total || 0),
       });
-      const data = await res.json();
-      if (res.ok) setRecent(data.data || []);
     } catch {
-    } finally {
-      setRecentLoading(false);
+      // ignore
     }
-  };
+  }
 
   useEffect(() => {
-    fetchRecent();
+    void loadCounts();
   }, []);
+
+  // Focus hidden input on mount and when dialog closes to keep scanner ready
+  useEffect(() => {
+    if (!dialogOpen) {
+      manualInputRef.current?.focus();
+    }
+  }, [dialogOpen]);
 
   const handleSubmit = async () => {
     const token = tokenValue.trim();
     if (!token) return toast.error("Masukkan token QR");
+    if (submittingRef.current) return; // prevent double submit
+    submittingRef.current = true;
     setBusy(true);
     try {
       const res = await fetch("/api/qrcodes/hadir", {
@@ -59,7 +85,7 @@ export default function ScanHadirPage() {
       const data = await res.json();
       if (!res.ok) {
         if (res.status === 409) {
-          toast.info("Sudah check-in (diabaikan)");
+          toast.info("Anda sudah check-in sebelumnya");
         } else {
           throw new Error(data?.error || "Gagal");
         }
@@ -67,13 +93,16 @@ export default function ScanHadirPage() {
         toast.success("Check-in berhasil");
       }
       setTokenValue("");
+      setDialogOpen(false);
       manualInputRef.current?.focus();
-      await fetchRecent();
+      setRefreshKey((k) => k + 1);
+      void loadCounts();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Token tidak valid";
       toast.error(msg);
     } finally {
       setBusy(false);
+      submittingRef.current = false;
     }
   };
 
@@ -81,150 +110,118 @@ export default function ScanHadirPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Scan Hadir</h1>
-          <p className="text-sm text-muted-foreground">
-            Mode input saja (dukungan pemindai keyboard).
-          </p>
+          <h1 className="text-xl font-semibold tracking-tight">
+            Scan Kehadiran
+          </h1>
+          <div className="mt-2 flex items-center gap-2">
+            <Badge variant="outline">Total: {total}</Badge>
+            <Badge variant="default">Hadir: {hadirCount}</Badge>
+            <Badge variant="secondary">Souvenir: {souvenirCount}</Badge>
+          </div>
         </div>
         <div className="flex gap-2">
           <Link
             href="/dashboard/participants"
             className={buttonVariants({ variant: "outline", size: "sm" })}
           >
-            Back to list
+            <ArrowLeft className="size-4" />
+            Kembali
           </Link>
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <form
-          onSubmit={(e) => {
+      {/* Hidden focused input for scanner devices */}
+      <input
+        ref={manualInputRef}
+        value={tokenValue}
+        onChange={(e) => {
+          setTokenValue(e.target.value);
+          if (scannerKb) {
+            if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+            idleTimerRef.current = setTimeout(() => {
+              if (!busy && !submittingRef.current && manualInputRef.current) {
+                void handleSubmit();
+              }
+            }, 150);
+          }
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
             e.preventDefault();
-            if (!busy) handleSubmit();
-          }}
-          className="rounded-lg border bg-card p-3 sm:p-4 grid gap-3 content-start self-start"
-        >
-          <div className="grid gap-2">
-            <Label htmlFor="token">Token QR</Label>
-            <Input
-              id="token"
-              name="token"
-              placeholder="Tempel token QR di sini"
-              autoFocus
-              ref={manualInputRef}
-              value={tokenValue}
-              onChange={(e) => {
-                setTokenValue(e.target.value);
-                if (scannerKb) {
-                  if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-                  idleTimerRef.current = setTimeout(() => {
-                    if (!busy && manualInputRef.current) {
-                      manualInputRef.current.form?.requestSubmit();
-                    }
-                  }, 120);
-                }
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  if (!busy) manualInputRef.current?.form?.requestSubmit();
-                }
-              }}
-            />
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Checkbox
-                id="scannerKb"
-                checked={scannerKb}
-                onCheckedChange={(v) => setScannerKb(Boolean(v))}
-              />
-              <Label htmlFor="scannerKb" className="cursor-pointer">
-                Mode Scanner
-              </Label>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => manualInputRef.current?.focus()}
-              >
-                Fokuskan Input
-              </Button>
+            if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+            if (!busy && !submittingRef.current) void handleSubmit();
+          }
+        }}
+        className="sr-only"
+        aria-hidden
+        autoFocus
+      />
+
+      <div className="rounded-lg border bg-card p-3 sm:p-4">
+        <div className="flex items-center justify-between">
+          <div className="">
+            <div className="text-sm font-medium mb-2">Scan QR Kehadiran</div>
+            <div className="text-xs text-muted-foreground mb-3">
+              Data peserta yang telah melakukan scan QR <i>(Check-In)</i>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button type="submit" disabled={busy}>
-              {busy ? "Memproses..." : "Check-in"}
-            </Button>
-          </div>
-        </form>
-
-        <div className="rounded-lg border bg-card p-3 sm:p-4">
-          <div className="text-sm font-medium mb-2">5 Data Terbaru (Hadir)</div>
-          <div className="text-xs text-muted-foreground mb-3">
-            Terbaru berdasarkan waktu pemindaian.
-          </div>
-          <div className="rounded-md border overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50">
-                <tr>
-                  <th className="text-left p-2">No</th>
-                  <th className="text-left p-2">Token</th>
-                  <th className="text-left p-2">Kehadiran</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentLoading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <tr key={`s-${i}`} className="border-t">
-                      <td className="p-2">
-                        <Skeleton className="h-4 w-6" />
-                      </td>
-                      <td className="p-2">
-                        <Skeleton className="h-4 w-64" />
-                      </td>
-                      <td className="p-2">
-                        <Skeleton className="h-6 w-24" />
-                      </td>
-                    </tr>
-                  ))
-                ) : recent.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={3}
-                      className="p-3 text-center text-muted-foreground"
-                    >
-                      Belum ada data
-                    </td>
-                  </tr>
-                ) : (
-                  recent.map((r, idx) => (
-                    <tr key={r.id} className="border-t">
-                      <td className="p-2">{idx + 1}</td>
-                      <td
-                        className="p-2 truncate max-w-[260px]"
-                        title={r.token}
-                      >
-                        {r.token}
-                      </td>
-                      <td className="p-2">
-                        <Badge
-                          variant="outline"
-                          className="text-muted-foreground px-1.5"
-                        >
-                          {r.hadir ? (
-                            <IconCircleCheckFilled className="mr-1 size-4 fill-green-500 dark:fill-green-400" />
-                          ) : (
-                            <IconLoader className="mr-1 size-4" />
-                          )}
-                          {r.hadir ? "Hadir" : "Belum"}
-                        </Badge>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+          <div className="items-center justify-center">
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <ScanBarcode className="size-4" />
+                  Input Manual
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Input Token Manual</DialogTitle>
+                  <DialogDescription>
+                    Masukkan token QR secara manual lalu submit untuk menandai
+                    hadir.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-2">
+                  <Label htmlFor="token-manual">Token QR</Label>
+                  <Input
+                    id="token-manual"
+                    value={tokenValue}
+                    onChange={(e) => setTokenValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (!busy) void handleSubmit();
+                      }
+                    }}
+                    placeholder="Tempel atau ketik token di sini"
+                    autoFocus
+                  />
+                </div>
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button variant="outline" type="button">
+                      Batal
+                    </Button>
+                  </DialogClose>
+                  <Button
+                    type="button"
+                    onClick={() => void handleSubmit()}
+                    disabled={busy}
+                  >
+                    {busy ? "Memproses..." : "Submit"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
+        <QRCodesTable
+          data={[]}
+          initialPageSize={5}
+          refreshKey={refreshKey}
+          showActions={false}
+          filterType="hadir"
+        />
       </div>
     </div>
   );

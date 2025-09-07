@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/drizzle";
 import { qrcode } from "@/db/schema";
-import { desc, count } from "drizzle-orm";
+import { desc, count, eq } from "drizzle-orm";
 import { revalidateTag } from "next/cache";
 import { ensureAdminApi } from "@/lib/require-admin";
 
@@ -21,9 +21,25 @@ export async function GET(req: NextRequest) {
       : 1;
     const offset = (page - 1) * limit;
 
-    const [{ value: total }] = await db.select({ value: count() }).from(qrcode);
+    const type = searchParams.get("type");
+    const whereClause =
+      type === "hadir"
+        ? eq(qrcode.hadir, true)
+        : type === "souvenir"
+          ? eq(qrcode.souvenir, true)
+          : undefined;
 
-    const base = db.select().from(qrcode).orderBy(desc(qrcode.createdAt));
+    const totalQuery = db.select({ value: count() }).from(qrcode);
+    const totalRows = whereClause
+      ? await totalQuery.where(whereClause)
+      : await totalQuery;
+    const [{ value: total }] = totalRows;
+
+    let base = db.select().from(qrcode).orderBy(desc(qrcode.createdAt));
+    if (whereClause) {
+      // @ts-expect-error drizzle type inference accepts where here
+      base = base.where(whereClause);
+    }
 
     const rows = await base.limit(limit).offset(offset);
     const pageCount = Math.max(1, Math.ceil(total / limit));
